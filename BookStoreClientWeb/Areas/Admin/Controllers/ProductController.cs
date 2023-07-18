@@ -36,7 +36,6 @@ namespace BookStoreClientWeb.Areas.Admin.Controllers
                 PropertyNameCaseInsensitive = true,
             };
             List<Product> objProductList = JsonSerializer.Deserialize<List<Product>>(productResponse, option);
-            // List<Product> objProductList = _unitOfWork.Product.GetAll(includeProperties: "Category").ToList();
             return View(objProductList);
         }
 

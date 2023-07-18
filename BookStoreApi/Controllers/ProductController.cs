@@ -31,6 +31,19 @@ namespace BookStoreApi.Controllers
             List<Product> objProductList = _unitOfWork.Product.GetAll(includeProperties: "Category").ToList();
             return Json(new { data = objProductList });
         }
+        [HttpGet("id")]
+        public IActionResult Detail(int id)
+        {
+            Product product = _unitOfWork.Product.Get(u => u.Id == id ,includeProperties : "Category");
+            if (product != null)
+            {
+                return Ok(product);
+            }
+            else
+            {
+                return NotFound();
+            }
+        }
         [HttpPost]
         public IActionResult AddProduct([FromBody] Product request)
         {
