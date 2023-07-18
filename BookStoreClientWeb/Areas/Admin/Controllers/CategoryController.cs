@@ -3,22 +3,34 @@ using BookStore.DataAccess.Data;
 using BookStore.DataAccess.Repository.IRepository;
 using BookStore.Models;
 using Microsoft.AspNetCore.Mvc;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
 namespace BookStoreClientWeb.Areas.Admin.Controllers
 {
     [Area("Admin")]
     public class CategoryController : Controller
     {
-        private readonly IUnitOfWork _unitOfWork;
-
-        public CategoryController(IUnitOfWork unitOfWork)
+        private readonly HttpClient _httpClient;
+        private readonly string ApiUrl = "";
+        public CategoryController()
         {
-            _unitOfWork = unitOfWork;
+            _httpClient = new HttpClient();
+            var contentType = new MediaTypeWithQualityHeaderValue("application/json");
+            _httpClient.DefaultRequestHeaders.Accept.Add(contentType);
+            ApiUrl = "https://localhost:7275/api/Category";
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            List<Category> categories = _unitOfWork.Category.GetAll().ToList();
+            HttpResponseMessage response = await _httpClient.GetAsync(ApiUrl);
+            var category = await response.Content.ReadAsStringAsync();
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+            };
+            List<Category> categories = JsonSerializer.Deserialize<List<Category>>(category,options);
             return View(categories);
         }
         [HttpGet]
@@ -27,7 +39,7 @@ namespace BookStoreClientWeb.Areas.Admin.Controllers
             return View();
         }
         [HttpPost]
-        public IActionResult Create(Category obj)
+        public async Task<IActionResult> Create(Category obj)
         {
             if (obj.Name == obj.DisplayOrder.ToString())
             {
@@ -35,64 +47,94 @@ namespace BookStoreClientWeb.Areas.Admin.Controllers
             }
             if (ModelState.IsValid)
             {
-                _unitOfWork.Category.Add(obj);
-                _unitOfWork.Save();
-                TempData["success"] = "Category created successfully!";
-                return RedirectToAction("Index");
-
+                var JsonModel = JsonSerializer.Serialize(obj);
+                var content = new StringContent(JsonModel, Encoding.UTF8, "application/json");
+                HttpResponseMessage response = await _httpClient.PostAsync(ApiUrl,content);
+                if (response.IsSuccessStatusCode)
+                {
+                    TempData["success"] = "Category created successfully!";
+                    return RedirectToAction("Index");
+                }
+                else
+                {
+                    TempData["error"] = "Category created fail!";
+                    return RedirectToAction("Index");
+                }
             }
             return View();
         }
         [HttpGet]
-        public IActionResult Edit(int? id)
+        public async Task<IActionResult> Edit(int? id)
         {
-            if (id == null && id == 0)
+            HttpResponseMessage response = await _httpClient.GetAsync($"https://localhost:7275/api/Category?Filter = Id eq {id}");
+            var categoryResponse = await response.Content.ReadAsStringAsync();
+            var options = new JsonSerializerOptions
             {
-                return NotFound();
-            }
-            Category? categoryFromDb = _unitOfWork.Category.Get(c => c.Id == id);
-            if (categoryFromDb == null)
+                PropertyNameCaseInsensitive = true,
+            };
+            if(categoryResponse != null)
             {
-                return NotFound();
+                List<Category> ListCategory = JsonSerializer.Deserialize<List<Category>>(categoryResponse, options);
+                Category category = ListCategory[0];
+                return (category != null) ? View(category) : RedirectToAction("Index");
             }
-            return View(categoryFromDb);
+            return NotFound();
         }
         [HttpPost]
-        public IActionResult Edit(Category obj)
+        public async Task<IActionResult> Edit(Category obj)
         {
             if (ModelState.IsValid)
             {
-                _unitOfWork.Category.Update(obj);
-                _unitOfWork.Save();
-                TempData["success"] = "Category updated successfully!";
-                return RedirectToAction("Index");
-
+                var JsonModel = JsonSerializer.Serialize(obj);
+                var content = new StringContent(JsonModel, Encoding.UTF8, "application/json");
+                
+                var response = await _httpClient.PutAsync($"https://localhost:7275/api/Category?id={obj.Id}",content);
+                if (response.IsSuccessStatusCode)
+                {
+                    TempData["success"] = "Category updated successfully!";
+                    return RedirectToAction("Index");
+                }
+                else
+                {
+                    TempData["error"] = "Category updated fail!";
+                    return RedirectToAction("Index");
+                }
             }
             return View();
         }
         [HttpGet]
-        public IActionResult Delete(int? id)
+        public async Task<IActionResult> Delete(int? id)
         {
-            if (id == null && id == 0)
+            HttpResponseMessage response = await _httpClient.GetAsync($"https://localhost:7275/api/Category?Filter = Id eq {id}");
+            var categoryResponse = await response.Content.ReadAsStringAsync();
+            var options = new JsonSerializerOptions
             {
-                return NotFound();
-            }
-            Category? categoryFromDb = _unitOfWork.Category.Get(c => c.Id == id);
-            if (categoryFromDb == null)
+                PropertyNameCaseInsensitive = true,
+            };
+            if (categoryResponse != null)
             {
-                return NotFound();
+                List<Category> ListCategory = JsonSerializer.Deserialize<List<Category>>(categoryResponse, options);
+                Category categoryFromDb = ListCategory[0];
+                return (categoryFromDb != null) ? View(categoryFromDb) : RedirectToAction("Index");
             }
-            return View(categoryFromDb);
+            return NotFound();
         }
         [HttpPost]
-        public IActionResult Delete(Category obj)
+        public async Task<IActionResult> Delete(Category obj)
         {
             if (ModelState.IsValid)
             {
-                _unitOfWork.Category.Remove(obj);
-                _unitOfWork.Save();
-                TempData["success"] = "Category deleted successfully!";
-                return RedirectToAction("Index");
+                var response = await _httpClient.DeleteAsync($"https://localhost:7275/api/Category/id?id={obj.Id}");
+                if (response.IsSuccessStatusCode)
+                {
+                    TempData["success"] = "Category delete successfully!";
+                    return RedirectToAction("Index");
+                }
+                else
+                {
+                    TempData["error"] = "Category delete fail!";
+                    return RedirectToAction("Index");
+                }
             }
             return View();
         }

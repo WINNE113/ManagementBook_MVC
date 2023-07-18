@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BookStore.DataAccess\BookStore.DataAccess.csproj" />
+    <ProjectReference Include="..\BookStoreApi\BookStoreApi.csproj" />
   </ItemGroup>
 
   <ItemGroup>
