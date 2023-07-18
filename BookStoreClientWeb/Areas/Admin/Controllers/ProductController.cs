@@ -4,35 +4,60 @@ using BookStore.Models.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.Collections.Generic;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
 namespace BookStoreClientWeb.Areas.Admin.Controllers
 {
     [Area("Admin")]
     public class ProductController : Controller
     {
+        private readonly HttpClient _httpClient;
+        private readonly string ApiUrl = "";
         private readonly IUnitOfWork _unitOfWork;
         private readonly IWebHostEnvironment _webHostEnvironment; // To get image
+        private HttpResponseMessage _response;
         public ProductController(IUnitOfWork unitOfWork, IWebHostEnvironment webHostEnvironment)
         {
             _unitOfWork = unitOfWork;
             _webHostEnvironment = webHostEnvironment;
+            _httpClient = new HttpClient();
+            var contentType = new MediaTypeWithQualityHeaderValue("application/json");
+            _httpClient.DefaultRequestHeaders.Accept.Add(contentType);
+            ApiUrl = "https://localhost:7275/api/Product";
         }
         [HttpGet]
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            List<Product> objProductList = _unitOfWork.Product.GetAll(includeProperties: "Category").ToList();
+            _response = await _httpClient.GetAsync("https://localhost:7275/api/Category");
+            var productResponse = await _response.Content.ReadAsStringAsync();
+            var option = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+            };
+            List<Product> objProductList = JsonSerializer.Deserialize<List<Product>>(productResponse, option);
+            // List<Product> objProductList = _unitOfWork.Product.GetAll(includeProperties: "Category").ToList();
             return View(objProductList);
         }
 
-        public IActionResult UpSert(int? id)
+        public async Task<IActionResult> UpSert(int? id)
         {
+            _response = await _httpClient.GetAsync("https://localhost:7275/api/Category");
+            var categoryRespone = await _response.Content.ReadAsStringAsync();
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+            };
+            List<Category> categories = JsonSerializer.Deserialize<List<Category>>(categoryRespone, options);
+            IEnumerable<SelectListItem>? selectListItems = categories.Select(u => new SelectListItem
+            {
+                Text = u.Name,
+                Value = u.Id.ToString(),
+            });
             ProductVM productVM = new()
             {
-                CategoryList = _unitOfWork.Category.GetAll().Select(u => new SelectListItem
-                {
-                    Text = u.Name,
-                    Value = u.Id.ToString()
-                }),
+                CategoryList = selectListItems.ToArray(),
                 Product = new Product()
             };
             if (id == null || id == 0)
@@ -42,18 +67,24 @@ namespace BookStoreClientWeb.Areas.Admin.Controllers
             }
             else
             {
+                _response = await _httpClient.GetAsync($"https://localhost:7275/api/Product?Filter = id eq {id}");
+                var productRespone = await _response.Content.ReadAsStringAsync();
+                List<Product> products = JsonSerializer.Deserialize<List<Product>>(productRespone, options);
+                if (products != null)
+                {
+                    productVM.Product = products[0];
+                }
                 //update
-                productVM.Product = _unitOfWork.Product.Get(u => u.Id == id);
                 return View(productVM);
             }
         }
         [HttpPost]
-        public IActionResult UpSert(ProductVM productVM, IFormFile? file)
+        public async Task<IActionResult> UpSert(ProductVM productVM, IFormFile? file)
         {
             if (ModelState.IsValid)
             {
                 string wwwRootPath = _webHostEnvironment.WebRootPath;
-                if(file != null)
+                if (file != null)
                 {
                     string fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
                     string productPath = Path.Combine(wwwRootPath, @"images\product");
@@ -79,17 +110,34 @@ namespace BookStoreClientWeb.Areas.Admin.Controllers
                 // Check if id == 0 will create 
                 if (productVM.Product.Id == 0)
                 {
-                    _unitOfWork.Product.Add(productVM.Product);
-                    TempData["success"] = "Product created successfully";
+                    var JsonModel = JsonSerializer.Serialize(productVM.Product);
+                    var content = new StringContent(JsonModel, Encoding.UTF8, "application/json");
+                    _response = await _httpClient.PostAsync(ApiUrl, content);
+                    if (_response.IsSuccessStatusCode)
+                    {
+                        TempData["success"] = "Product created successfully";
+                    }
+                    else
+                    {
+                        TempData["error"] = "Product created fail!";
+                    }
                 }
                 else
                 {
-                    _unitOfWork.Product.Update(productVM.Product);
-                    TempData["success"] = "Product Update successfully";
+                    var JsonModel = JsonSerializer.Serialize(productVM.Product);
+                    var content = new StringContent(JsonModel, Encoding.UTF8, "application/json");
+                    _response = await _httpClient.PutAsync(ApiUrl, content);
+                    if (_response.IsSuccessStatusCode)
+                    {
+                        TempData["success"] = "Product update successfully";
+                    }
+                    else
+                    {
+                        TempData["error"] = "Product update fail!";
+                    }
                 }
-
                 _unitOfWork.Save();
-               
+
                 return RedirectToAction("Index");
             }
             else
@@ -102,64 +150,17 @@ namespace BookStoreClientWeb.Areas.Admin.Controllers
                 return View(productVM);
             }
         }
-        [HttpGet]
-        //public IActionResult Delete(int? id)
+ 
+
+
+        //#region API CALLS
+
+        //[HttpGet]
+        //public IActionResult GetAll()
         //{
-        //    if (id == null || id == 0)
-        //    {
-        //        return NotFound();
-        //    }
-        //    Product? productFromDb = _unitOfWork.Product.Get(u => u.Id == id);
-
-        //    if (productFromDb == null)
-        //    {
-        //        return NotFound();
-        //    }
-        //    return View(productFromDb);
+        //    List<Product> objProductList = _unitOfWork.Product.GetAll(includeProperties: "Category").ToList();
+        //    return Json(new { data = objProductList });
         //}
-        //[HttpPost, ActionName("Delete")]
-        //public IActionResult DeletePOST(int? id)
-        //{
-        //    Product? obj = _unitOfWork.Product.Get(u => u.Id == id);
-        //    if (obj == null)
-        //    {
-        //        return NotFound();
-        //    }
-        //    _unitOfWork.Product.Remove(obj);
-        //    _unitOfWork.Save();
-        //    TempData["success"] = "Product deleted successfully";
-        //    return RedirectToAction("Index");
-        //}
-
-        #region API CALLS
-
-        [HttpGet]
-        public IActionResult GetAll()
-        {
-            List<Product> objProductList = _unitOfWork.Product.GetAll(includeProperties: "Category").ToList();
-            return Json(new { data = objProductList });
-        }
-        [HttpDelete]
-        public IActionResult Delete(int? id)
-        {
-            var productToBeDeleted = _unitOfWork.Product.Get(u => u.Id == id);
-            if (productToBeDeleted == null)
-            {
-                return Json(new { success = false, message = "Error while deleting" });
-            }
-            var oldImagePath =
-                         Path.Combine(_webHostEnvironment.WebRootPath,
-                         productToBeDeleted.ImageUrl.TrimStart('\\'));
-
-            if (System.IO.File.Exists(oldImagePath))
-            {
-                System.IO.File.Delete(oldImagePath);
-            }
-            _unitOfWork.Product.Remove(productToBeDeleted);
-            _unitOfWork.Save();
-            return Json(new { success = true, message = "Delete Successful" });
-        }
-        #endregion
-    }
-
+        //#endregion
+    } 
 }

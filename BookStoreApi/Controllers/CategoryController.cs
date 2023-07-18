@@ -2,6 +2,7 @@
 using BookStore.Models;
 using BookStoreApi.ModelsRequest;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.OData.Query;
 
 namespace BookStoreApi.Controllers
@@ -29,6 +30,8 @@ namespace BookStoreApi.Controllers
                 throw new Exception(ex.Message);
             }
         }
+    
+      
         [HttpPost]
         public IActionResult AddCategory([FromBody] CategoryRequest request)
         {
