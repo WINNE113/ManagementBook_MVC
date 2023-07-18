@@ -1,10 +1,12 @@
 ﻿using BookStore.Models;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 namespace BookStore.DataAccess.Data
 {
-    public class ApplicationDbContext : DbContext
+    public class ApplicationDbContext : IdentityDbContext<IdentityUser>
     {
         public ApplicationDbContext()
         {
@@ -25,6 +27,8 @@ namespace BookStore.DataAccess.Data
         }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            base.OnModelCreating(modelBuilder);
+            this.SeedRoles(modelBuilder);
             modelBuilder.Entity<Category>().HasData(
                 new Category { Id = 2, Name = "SciFi", DisplayOrder = 2 },
                 new Category { Id = 3, Name = "History", DisplayOrder = 3 }
@@ -115,6 +119,14 @@ namespace BookStore.DataAccess.Data
                    ImageUrl = ""
                }
                );
+        }
+        private void SeedRoles(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<IdentityRole>().HasData(
+                new IdentityRole() { Name = "Admin", ConcurrencyStamp = "1", NormalizedName = "Admin" },
+                new IdentityRole() { Name = "User", ConcurrencyStamp = "2", NormalizedName = "User" },
+                new IdentityRole() { Name = "Customer", ConcurrencyStamp = "3", NormalizedName = "Customer" }
+                );
         }
     }
 }
