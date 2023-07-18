@@ -15,12 +15,11 @@ namespace BookStoreClientWeb.Areas.Admin.Controllers
     {
         private readonly HttpClient _httpClient;
         private readonly string ApiUrl = "";
-        private readonly IUnitOfWork _unitOfWork;
+       // private readonly IUnitOfWork _unitOfWork;
         private readonly IWebHostEnvironment _webHostEnvironment; // To get image
         private HttpResponseMessage _response;
-        public ProductController(IUnitOfWork unitOfWork, IWebHostEnvironment webHostEnvironment)
+        public ProductController(IWebHostEnvironment webHostEnvironment)
         {
-            _unitOfWork = unitOfWork;
             _webHostEnvironment = webHostEnvironment;
             _httpClient = new HttpClient();
             var contentType = new MediaTypeWithQualityHeaderValue("application/json");
@@ -136,31 +135,29 @@ namespace BookStoreClientWeb.Areas.Admin.Controllers
                         TempData["error"] = "Product update fail!";
                     }
                 }
-                _unitOfWork.Save();
-
                 return RedirectToAction("Index");
             }
             else
             {
-                productVM.CategoryList = _unitOfWork.Category.GetAll().Select(u => new SelectListItem
+                _response = await _httpClient.GetAsync("https://localhost:7275/api/Category");
+                var categoryRespone = await _response.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                };
+                List<Category> categories = JsonSerializer.Deserialize<List<Category>>(categoryRespone, options);
+                IEnumerable<SelectListItem>? selectListItems = categories.Select(u => new SelectListItem
                 {
                     Text = u.Name,
-                    Value = u.Id.ToString()
+                    Value = u.Id.ToString(),
                 });
-                return View(productVM);
+                ProductVM product = new()
+                {
+                    CategoryList = selectListItems.ToArray(),
+                    Product = new Product()
+                };
+                return View(product);
             }
         }
- 
-
-
-        //#region API CALLS
-
-        //[HttpGet]
-        //public IActionResult GetAll()
-        //{
-        //    List<Product> objProductList = _unitOfWork.Product.GetAll(includeProperties: "Category").ToList();
-        //    return Json(new { data = objProductList });
-        //}
-        //#endregion
     } 
 }

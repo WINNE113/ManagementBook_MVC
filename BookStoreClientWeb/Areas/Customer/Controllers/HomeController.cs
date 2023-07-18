@@ -7,10 +7,14 @@ namespace BookStoreClientWeb.Areas.Customer.Controllers
     [Area("Customer")]
     public class HomeController : Controller
     {
+        private readonly HttpClient _httpClient;
+        private string ApiUrl = "";
         private readonly ILogger<HomeController> _logger;
 
         public HomeController(ILogger<HomeController> logger)
         {
+            _httpClient = new HttpClient();
+          
             _logger = logger;
         }
 
