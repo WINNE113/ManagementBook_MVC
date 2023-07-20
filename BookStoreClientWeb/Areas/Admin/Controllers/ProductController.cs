@@ -1,6 +1,7 @@
 ﻿using BookStore.DataAccess.Repository.IRepository;
 using BookStore.Models;
 using BookStore.Models.ViewModels;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.Collections.Generic;
@@ -11,13 +12,14 @@ using System.Text.Json;
 namespace BookStoreClientWeb.Areas.Admin.Controllers
 {
     [Area("Admin")]
+    [Authorize]
     public class ProductController : Controller
     {
         private readonly HttpClient _httpClient;
         private readonly string ApiUrl = "";
        // private readonly IUnitOfWork _unitOfWork;
         private readonly IWebHostEnvironment _webHostEnvironment; // To get image
-        private HttpResponseMessage _response;
+        private HttpResponseMessage _response; 
         public ProductController(IWebHostEnvironment webHostEnvironment)
         {
             _webHostEnvironment = webHostEnvironment;
@@ -29,56 +31,81 @@ namespace BookStoreClientWeb.Areas.Admin.Controllers
         [HttpGet]
         public async Task<IActionResult> Index()
         {
+            string token = HttpContext.Session.GetString("token");
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             _response = await _httpClient.GetAsync("https://localhost:7275/api/Category");
-            var productResponse = await _response.Content.ReadAsStringAsync();
-            var option = new JsonSerializerOptions
+            if (_response.IsSuccessStatusCode)
             {
-                PropertyNameCaseInsensitive = true,
-            };
-            List<Product> objProductList = JsonSerializer.Deserialize<List<Product>>(productResponse, option);
-            return View(objProductList);
+                var productResponse = await _response.Content.ReadAsStringAsync();
+                var option = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                };
+                List<Product> objProductList = JsonSerializer.Deserialize<List<Product>>(productResponse, option);
+                return View(objProductList);
+            }
+            return RedirectToAction("Error", "Home");
+         
         }
 
         public async Task<IActionResult> UpSert(int? id)
         {
+            string token = HttpContext.Session.GetString("token");
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             _response = await _httpClient.GetAsync("https://localhost:7275/api/Category");
-            var categoryRespone = await _response.Content.ReadAsStringAsync();
-            var options = new JsonSerializerOptions
+            if (_response.IsSuccessStatusCode)
             {
-                PropertyNameCaseInsensitive = true,
-            };
-            List<Category> categories = JsonSerializer.Deserialize<List<Category>>(categoryRespone, options);
-            IEnumerable<SelectListItem>? selectListItems = categories.Select(u => new SelectListItem
-            {
-                Text = u.Name,
-                Value = u.Id.ToString(),
-            });
-            ProductVM productVM = new()
-            {
-                CategoryList = selectListItems.ToArray(),
-                Product = new Product()
-            };
-            if (id == null || id == 0)
-            {
-                //create
-                return View(productVM);
-            }
-            else
-            {
-                _response = await _httpClient.GetAsync($"https://localhost:7275/api/Product?Filter = id eq {id}");
-                var productRespone = await _response.Content.ReadAsStringAsync();
-                List<Product> products = JsonSerializer.Deserialize<List<Product>>(productRespone, options);
-                if (products != null)
+                var categoryRespone = await _response.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions
                 {
-                    productVM.Product = products[0];
+                    PropertyNameCaseInsensitive = true,
+                };
+                List<Category> categories = JsonSerializer.Deserialize<List<Category>>(categoryRespone, options);
+                IEnumerable<SelectListItem>? selectListItems = categories.Select(u => new SelectListItem
+                {
+                    Text = u.Name,
+                    Value = u.Id.ToString(),
+                });
+                ProductVM productVM = new()
+                {
+                    CategoryList = selectListItems.ToArray(),
+                    Product = new Product()
+                };
+                if (id == null || id == 0)
+                {
+                    //create
+                    return View(productVM);
                 }
-                //update
-                return View(productVM);
+                else
+                {
+
+                    _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                    _response = await _httpClient.GetAsync($"https://localhost:7275/api/Product?Filter = id eq {id}");
+                    if (_response.IsSuccessStatusCode)
+                    {
+                        var productRespone = await _response.Content.ReadAsStringAsync();
+                        List<Product> products = JsonSerializer.Deserialize<List<Product>>(productRespone, options);
+                        if (products != null)
+                        {
+                            productVM.Product = products[0];
+                        }
+                        //update
+                        return View(productVM);
+                    }
+                    else
+                    {
+                        return RedirectToAction("Error", "Home");
+                    }
+                  
+                }
             }
+            return RedirectToAction("Index", "Home");
+          
         }
         [HttpPost]
         public async Task<IActionResult> UpSert(ProductVM productVM, IFormFile? file)
         {
+            string token = HttpContext.Session.GetString("token");
             if (ModelState.IsValid)
             {
                 string wwwRootPath = _webHostEnvironment.WebRootPath;
@@ -110,6 +137,8 @@ namespace BookStoreClientWeb.Areas.Admin.Controllers
                 {
                     var JsonModel = JsonSerializer.Serialize(productVM.Product);
                     var content = new StringContent(JsonModel, Encoding.UTF8, "application/json");
+                 
+                    _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
                     _response = await _httpClient.PostAsync(ApiUrl, content);
                     if (_response.IsSuccessStatusCode)
                     {
@@ -124,6 +153,7 @@ namespace BookStoreClientWeb.Areas.Admin.Controllers
                 {
                     var JsonModel = JsonSerializer.Serialize(productVM.Product);
                     var content = new StringContent(JsonModel, Encoding.UTF8, "application/json");
+                    _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer",token);
                     _response = await _httpClient.PutAsync(ApiUrl, content);
                     if (_response.IsSuccessStatusCode)
                     {
@@ -138,6 +168,7 @@ namespace BookStoreClientWeb.Areas.Admin.Controllers
             }
             else
             {
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
                 _response = await _httpClient.GetAsync("https://localhost:7275/api/Category");
                 var categoryRespone = await _response.Content.ReadAsStringAsync();
                 var options = new JsonSerializerOptions

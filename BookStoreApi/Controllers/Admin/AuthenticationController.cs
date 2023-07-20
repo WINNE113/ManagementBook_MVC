@@ -12,7 +12,7 @@ using UserManagementService.Models;
 using BookStore.Models.Authentication.Login;
 using BookStore.Models.ModelsToRequest;
 
-namespace UserManagementAPI.Controllers
+namespace BookStoreApi.Controllers.Admin
 {
     [ApiController]
     [Route("api/[Controller]")]
@@ -23,7 +23,7 @@ namespace UserManagementAPI.Controllers
         private readonly SignInManager<IdentityUser>? SignInManager;
         private readonly IEmailService _emailService;
         private readonly IConfiguration _configuration;
-        public AuthenticationController(UserManager<IdentityUser>? userManager, RoleManager<IdentityRole>? roleManager,SignInManager<IdentityUser>? signInManager, IConfiguration configuration, IEmailService emailService)
+        public AuthenticationController(UserManager<IdentityUser>? userManager, RoleManager<IdentityRole>? roleManager, SignInManager<IdentityUser>? signInManager, IConfiguration configuration, IEmailService emailService)
         {
             UserManager = userManager;
             RoleManager = roleManager;
@@ -32,7 +32,7 @@ namespace UserManagementAPI.Controllers
             _emailService = emailService;
         }
 
-        [HttpPost]
+        [HttpPost("Role")]
         public async Task<IActionResult> RegisterAccount([FromBody] RegisterUser registerUser, string Role)
         {
             try
@@ -50,7 +50,7 @@ namespace UserManagementAPI.Controllers
                         Email = registerUser.Email,
                         UserName = registerUser.UserName,
                         SecurityStamp = Guid.NewGuid().ToString(),
-                        TwoFactorEnabled = true
+                        TwoFactorEnabled = false
                     };
                     // check role exits
                     if (await RoleManager.RoleExistsAsync(Role))
@@ -89,41 +89,56 @@ namespace UserManagementAPI.Controllers
         {
             // checking the user && password
             var user = await UserManager.FindByNameAsync(login.UserName);
-            if (user.TwoFactorEnabled)
+            try
             {
-                await SignInManager.SignOutAsync();
-                await SignInManager.PasswordSignInAsync(user, login.Password, false, true);
-                var token = await UserManager.GenerateTwoFactorTokenAsync(user, "Email");
-                //  string twoFactorAuthLink = Url.Action("Verifie", "Authentication", new { token, email = user.Email }, Request.Scheme);
-                var message = new Message(new string[] { user.Email }, "OTP To Confirmation", token);
-                _emailService.SendEmail(message);
+                if (user != null)
+                {
+                    if (user.TwoFactorEnabled)
+                    {
+                        await SignInManager.SignOutAsync();
+                        await SignInManager.PasswordSignInAsync(user, login.Password, false, true);
+                        var token = await UserManager.GenerateTwoFactorTokenAsync(user, "Email");
+                        //  string twoFactorAuthLink = Url.Action("Verifie", "Authentication", new { token, email = user.Email }, Request.Scheme);
+                        var message = new Message(new string[] { user.Email }, "OTP To Confirmation", token);
+                        _emailService.SendEmail(message);
 
-                return StatusCode(StatusCodes.Status200OK, new Response { Status = "Success", Message = $"We have sent an OTP to your Email {user.Email}" });
-            }
-            if (user != null && await UserManager.CheckPasswordAsync(user, login.Password))
-            {
-                // claim list creation
-                var authClaims = new List<Claim>
+                        return StatusCode(StatusCodes.Status200OK, new Response { Status = "Success", Message = $"We have sent an OTP to your Email {user.Email}" });
+                    }
+                    if (user != null && await UserManager.CheckPasswordAsync(user, login.Password))
+                    {
+                        // claim list creation
+                        var authClaims = new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, user.UserName),
                     new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 };
-                // we add roles to the list
-                var userRoles = await UserManager.GetRolesAsync(user);
-                foreach (var role in userRoles)
-                {
-                    authClaims.Add(new Claim(ClaimTypes.Role, role));
-                }
-                // Generation the token with the claims
-                var jwtToken = GetToken(authClaims);
+                        // we add roles to the list
+                        var userRoles = await UserManager.GetRolesAsync(user);
+                        foreach (var role in userRoles)
+                        {
+                            authClaims.Add(new Claim(ClaimTypes.Role, role));
+                        }
+                        // Generation the token with the claims
+                        var jwtToken = GetToken(authClaims);
 
-                // Return Token
-                return Ok(new
+                        // Return Token
+                        return Ok(new
+                        {
+                            token = new JwtSecurityTokenHandler().WriteToken(jwtToken),
+                            expiration = jwtToken.ValidTo
+                        });
+                    }
+                }
+                else
                 {
-                    token = new JwtSecurityTokenHandler().WriteToken(jwtToken),
-                    expiration = jwtToken.ValidTo
-                });
+                    return NotFound();
+                }
             }
+            catch (Exception ex)
+            {
+                throw new Exception();
+            }
+
             // returning the token
             return Unauthorized();
         }
@@ -190,7 +205,7 @@ namespace UserManagementAPI.Controllers
 
                 return StatusCode(StatusCodes.Status200OK, new Response { Status = "Success", Message = "Email Sent SuccessFully" });
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 throw new Exception(ex.Message);
             }
@@ -200,7 +215,7 @@ namespace UserManagementAPI.Controllers
         public async Task<IActionResult> ConfirmEmail(string token, string email)
         {
             var user = await UserManager.FindByEmailAsync(email);
-            if(user != null)
+            if (user != null)
             {
                 var result = await UserManager.ConfirmEmailAsync(user, token);
                 if (result.Succeeded)

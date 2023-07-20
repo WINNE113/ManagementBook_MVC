@@ -2,6 +2,7 @@
 using BookStore.DataAccess.Data;
 using BookStore.DataAccess.Repository.IRepository;
 using BookStore.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net.Http.Headers;
 using System.Text;
@@ -10,6 +11,7 @@ using System.Text.Json;
 namespace BookStoreClientWeb.Areas.Admin.Controllers
 {
     [Area("Admin")]
+    [Authorize]
     public class CategoryController : Controller
     {
         private readonly HttpClient _httpClient;
@@ -24,6 +26,8 @@ namespace BookStoreClientWeb.Areas.Admin.Controllers
 
         public async Task<IActionResult> Index()
         {
+            string token = HttpContext.Session.GetString("token");
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             HttpResponseMessage response = await _httpClient.GetAsync(ApiUrl);
             var category = await response.Content.ReadAsStringAsync();
             var options = new JsonSerializerOptions
@@ -49,6 +53,8 @@ namespace BookStoreClientWeb.Areas.Admin.Controllers
             {
                 var JsonModel = JsonSerializer.Serialize(obj);
                 var content = new StringContent(JsonModel, Encoding.UTF8, "application/json");
+                string token = HttpContext.Session.GetString("token");
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
                 HttpResponseMessage response = await _httpClient.PostAsync(ApiUrl,content);
                 if (response.IsSuccessStatusCode)
                 {
@@ -66,6 +72,8 @@ namespace BookStoreClientWeb.Areas.Admin.Controllers
         [HttpGet]
         public async Task<IActionResult> Edit(int? id)
         {
+            string token = HttpContext.Session.GetString("token");
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             HttpResponseMessage response = await _httpClient.GetAsync($"https://localhost:7275/api/Category?Filter = Id eq {id}");
             var categoryResponse = await response.Content.ReadAsStringAsync();
             var options = new JsonSerializerOptions
@@ -87,7 +95,8 @@ namespace BookStoreClientWeb.Areas.Admin.Controllers
             {
                 var JsonModel = JsonSerializer.Serialize(obj);
                 var content = new StringContent(JsonModel, Encoding.UTF8, "application/json");
-                
+                string token = HttpContext.Session.GetString("token");
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
                 var response = await _httpClient.PutAsync($"https://localhost:7275/api/Category?id={obj.Id}",content);
                 if (response.IsSuccessStatusCode)
                 {
@@ -105,6 +114,8 @@ namespace BookStoreClientWeb.Areas.Admin.Controllers
         [HttpGet]
         public async Task<IActionResult> Delete(int? id)
         {
+            string token = HttpContext.Session.GetString("token");
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             HttpResponseMessage response = await _httpClient.GetAsync($"https://localhost:7275/api/Category?Filter = Id eq {id}");
             var categoryResponse = await response.Content.ReadAsStringAsync();
             var options = new JsonSerializerOptions
@@ -124,6 +135,8 @@ namespace BookStoreClientWeb.Areas.Admin.Controllers
         {
             if (ModelState.IsValid)
             {
+                string token = HttpContext.Session.GetString("token");
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
                 var response = await _httpClient.DeleteAsync($"https://localhost:7275/api/Category/id?id={obj.Id}");
                 if (response.IsSuccessStatusCode)
                 {

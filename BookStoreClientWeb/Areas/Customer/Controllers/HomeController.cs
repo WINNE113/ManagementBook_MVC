@@ -18,7 +18,7 @@ namespace BookStoreClientWeb.Areas.Customer.Controllers
         {
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            ApiUrl = "https://localhost:7275/api/Product";
+            ApiUrl = "https://localhost:7275/api/ProductCustomer";
             _logger = logger;
         }
         [HttpGet]
@@ -32,6 +32,7 @@ namespace BookStoreClientWeb.Areas.Customer.Controllers
                 {
                     PropertyNameCaseInsensitive = true
                 };
+
                 IEnumerable<Product> products = JsonSerializer.Deserialize<IEnumerable<Product>>(productResponse,options);
                 return View(products);
             }
@@ -41,7 +42,7 @@ namespace BookStoreClientWeb.Areas.Customer.Controllers
         [HttpGet]
         public async Task<IActionResult> Detail(int productId)
         {
-            _response = await _httpClient.GetAsync($"https://localhost:7275/api/Product/id?id={productId}");
+            _response = await _httpClient.GetAsync($"https://localhost:7275/api/ProductCustomer/id?id={productId}");
             if (_response.IsSuccessStatusCode)
             {
                 var productResponse = await _response.Content.ReadAsStringAsync();

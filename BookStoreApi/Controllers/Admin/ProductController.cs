@@ -1,23 +1,25 @@
 ﻿using BookStore.DataAccess.Repository.IRepository;
 using BookStore.Models;
 using BookStore.Models.ViewModels;
+using BookStore.Unitily.SD;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OData.Query;
 
-namespace BookStoreApi.Controllers
+namespace BookStoreApi.Controllers.Admin
 {
     [ApiController]
     [Route("api/[Controller]")]
     public class ProductController : Controller
     {
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IWebHostEnvironment _webHostEnvironment; // To get image
+        private IWebHostEnvironment _webHostEnvironment; // To get image
         public ProductController(IUnitOfWork unitOfWork, IWebHostEnvironment webHostEnvironment)
         {
             _unitOfWork = unitOfWork;
             _webHostEnvironment = webHostEnvironment;
         }
-
+        [Authorize(Roles = SD.Role_Admin)]
         [EnableQuery]
         [HttpGet]
         public IActionResult GetProduts()
@@ -31,19 +33,7 @@ namespace BookStoreApi.Controllers
             List<Product> objProductList = _unitOfWork.Product.GetAll(includeProperties: "Category").ToList();
             return Json(new { data = objProductList });
         }
-        [HttpGet("id")]
-        public IActionResult Detail(int id)
-        {
-            Product product = _unitOfWork.Product.Get(u => u.Id == id ,includeProperties : "Category");
-            if (product != null)
-            {
-                return Ok(product);
-            }
-            else
-            {
-                return NotFound();
-            }
-        }
+        [Authorize(Roles = SD.Role_Admin)]
         [HttpPost]
         public IActionResult AddProduct([FromBody] Product request)
         {
@@ -88,7 +78,7 @@ namespace BookStoreApi.Controllers
             {
                 return Json(new { success = false, message = "Error while deleting" });
             }
-            var slnPath = Directory.GetParent(System.IO.Directory.GetCurrentDirectory()).ToString();
+            var slnPath = Directory.GetParent(Directory.GetCurrentDirectory()).ToString();
             //var oldImagePath =
             //             Path.Combine(_webHostEnvironment.WebRootPath,
             //             productToBeDeleted.ImageUrl.TrimStart('\\'));
@@ -103,6 +93,7 @@ namespace BookStoreApi.Controllers
             _unitOfWork.Save();
             return Json(new { success = true, message = "Delete Successful" });
         }
+        [Authorize(Roles = SD.Role_Admin)]
         [HttpPut]
         public IActionResult UpdateProduct([FromBody] Product request)
         {
@@ -117,5 +108,6 @@ namespace BookStoreApi.Controllers
                 throw new Exception(ex.Message);
             }
         }
+
     }
 }
