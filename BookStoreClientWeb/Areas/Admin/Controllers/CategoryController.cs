@@ -11,7 +11,6 @@ using System.Text.Json;
 namespace BookStoreClientWeb.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [Authorize]
     public class CategoryController : Controller
     {
         private readonly HttpClient _httpClient;

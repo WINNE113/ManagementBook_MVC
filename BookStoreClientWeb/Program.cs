@@ -16,7 +16,6 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>()
 
 builder.Services.ConfigureApplicationCookie(options => {
     options.LoginPath = $"/Customer/Authentication/Login";
-    options.LogoutPath = $"/Customer/Authentication/Logout";
 });
 
 

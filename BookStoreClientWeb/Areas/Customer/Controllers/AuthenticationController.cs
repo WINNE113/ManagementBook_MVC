@@ -5,6 +5,7 @@ using BookStore.Unitily.SD;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 
@@ -15,18 +16,20 @@ namespace BookStoreClientWeb.Areas.Customer.Controllers
     {
         private readonly UserManager<IdentityUser> _userManager;
         private readonly SignInManager<IdentityUser> _signInManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
         private HttpClient _httpClient;
         private string ApiUrl = "";
         private HttpResponseMessage _response;
         private const string ROLE_CUSTOMER = "Customer";
 
-        public AuthenticationController(UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager)
+        public AuthenticationController(UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager, RoleManager<IdentityRole> roleManager)
         {
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             ApiUrl = "https://localhost:7275/api/Authentication";
             _signInManager = signInManager;
             _userManager = userManager;
+            _roleManager = roleManager;
         }
         [HttpGet]
         public IActionResult Login()
@@ -43,19 +46,43 @@ namespace BookStoreClientWeb.Areas.Customer.Controllers
                 _response = await _httpClient.PostAsync("https://localhost:7275/api/Authentication/login", content);
                 if (_response.IsSuccessStatusCode)
                 {
+                    var userDb = await _userManager.FindByNameAsync(login.UserName);
+                    // Check user have enable 2F
+                    if(userDb.TwoFactorEnabled == true)
+                    {
+                        return RedirectToAction("LoginTwoFactor");
+                    }
+                    
                     var response = await _response.Content.ReadAsStringAsync();
                     var responseObject = JsonSerializer.Deserialize<JsonElement>(response);
                     string token = responseObject.GetProperty("token").GetString();
+                  
                     HttpContext.Session.SetString("token", token);
-                    _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+              
                     var user = new IdentityUser() {
                         UserName = login.UserName,
                     };
+                
+                    if (userDb != null)
+                    {
+                        var roleDb = await _userManager.GetRolesAsync(userDb);
+
+                        HttpContext.Session.SetString("role", roleDb[0]); // TODO
+                    }
+
                     await _signInManager.SignInAsync(user, false);
+
+                }
+
                     return RedirectToAction("Index", "Home");
                 }
                 TempData["error"] = "Login was fail!";
-            }
+            
+            return View();
+        }
+        [HttpGet]
+        public async Task<IActionResult> LoginTwoFactor()
+        {
             return View();
         }
         [HttpGet]
@@ -75,7 +102,7 @@ namespace BookStoreClientWeb.Areas.Customer.Controllers
                 {
                     var user = new IdentityUser()
                     {
-                        UserName = registerUser.UserName,
+                        UserName = registerUser.UserName, 
                         Email = registerUser.Email,
                     };
                     TempData["success"] = "Register was successfully!";
@@ -91,6 +118,7 @@ namespace BookStoreClientWeb.Areas.Customer.Controllers
         public IActionResult Logout()
         {
             HttpContext.Session.Remove("token");
+            HttpContext.Session.Remove("role");
             _signInManager.SignOutAsync();
             return RedirectToAction("Index","Home");    
         }

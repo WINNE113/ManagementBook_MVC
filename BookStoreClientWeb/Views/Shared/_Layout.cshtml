@@ -1,4 +1,9 @@
-﻿<!DOCTYPE html>
+﻿@using Microsoft.AspNetCore.Http;
+@inject IHttpContextAccessor HttpContextAccessor
+@{    
+    string role = HttpContextAccessor.HttpContext.Session.GetString("role");    
+}
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -29,7 +34,7 @@
                         </li>
                         <li class="nav-item dropdown">
 
-                            @if (User.IsInRole(SD.Role_Admin))
+                            @if (role == SD.Role_Admin)
                             {
                                 <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     Content Managment
