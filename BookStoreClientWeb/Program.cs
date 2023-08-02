@@ -21,10 +21,11 @@ builder.Services.ConfigureApplicationCookie(options => {
 
 // config session
 builder.Services.AddSession(options => {
-    options.IdleTimeout = TimeSpan.FromMinutes(100);
+    options.IdleTimeout = TimeSpan.FromMinutes(60);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
 });
+//builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 

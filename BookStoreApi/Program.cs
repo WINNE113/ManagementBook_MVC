@@ -22,6 +22,17 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<ApplicationDbContext>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    // Set session timeout (optional)
+    options.IdleTimeout = TimeSpan.FromMinutes(60); // Example: 60 minutes
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
+
+//builder.Services.AddHttpContextAccessor();
+
 // config OData
 builder.Services.AddControllers().AddOData(options => options
                     .Select().Filter().Expand().SetMaxTop(100).Count());
@@ -97,6 +108,7 @@ builder.Services.AddSwaggerGen(option =>
     });
 });
 
+
 var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -105,8 +117,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseSession();
 app.UseCors("AllowSpecificOrigin");
-
 
 app.UseHttpsRedirection();
 

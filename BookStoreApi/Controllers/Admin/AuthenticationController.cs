@@ -145,11 +145,10 @@ namespace BookStoreApi.Controllers.Admin
 
         [HttpPost]
         [Route("login2FA")]
-        public async Task<IActionResult> LoginWithOTP(string code, string userName)
+        public async Task<IActionResult> LoginWithOTP([FromBody]Login2FARequest login2FA)
         {
-            var user = await UserManager.FindByNameAsync(userName);
-
-            var signIn = await SignInManager.TwoFactorSignInAsync("Email", code, false, false);
+            var user = await UserManager.FindByNameAsync(login2FA.UserName);
+            var signIn = await SignInManager.TwoFactorSignInAsync("Email", login2FA.OtpCode, false, false);
 
             if (signIn.Succeeded)
             {
@@ -179,7 +178,38 @@ namespace BookStoreApi.Controllers.Admin
                 }
 
             }
-            return StatusCode(StatusCodes.Status404NotFound, new Response { Status = "Error", Message = "Invalid Code" });
+            return NotFound();
+        }
+        [HttpGet]
+        [Route("Token")]
+        public async Task<IActionResult> GetTokenLogin2FA(string UserName)
+        {
+            var user = await UserManager.FindByNameAsync(UserName);
+            if (user != null)
+                {
+                    // claim list creation
+                    var authClaims = new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, user.UserName),
+                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                };
+                    // we add roles to the list
+                    var userRoles = await UserManager.GetRolesAsync(user);
+                    foreach (var role in userRoles)
+                    {
+                        authClaims.Add(new Claim(ClaimTypes.Role, role));
+                    }
+                    // Generation the token with the claims
+                    var jwtToken = GetToken(authClaims);
+
+                    // Return Token
+                    return Ok(new
+                    {
+                        token = new JwtSecurityTokenHandler().WriteToken(jwtToken),
+                        expiration = jwtToken.ValidTo
+                    });
+                }
+            return NotFound();
         }
         [HttpPost]
         [Route("TwoFactorAuth")]

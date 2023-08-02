@@ -1,0 +1,22 @@
+﻿<div class="card-body p-4">
+    <div class="row">
+        <div class="col-md-12">
+            <section>
+                <form asp-action="LoginTwoFactor" aasp-controller="Authentication" method="post">
+                    <h3 class="border-bottom pb-3 mb-4 text-secondary text-center">
+                        OTP send to
+                    </h3>
+                    <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
+                    <div class="form-floating mb-3">
+                        <input class="form-control" name="OTPCode" aria-required="true" value="" placeholder="" />
+                        <label class="form-label">OTP</label>
+                        <span class="text-danger"></span>
+                    </div>
+                    <div>
+                        <button id="login-submit" type="submit" class="w-100 btn btn-lg btn-primary">Confirm</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+    </div>
+</div>
